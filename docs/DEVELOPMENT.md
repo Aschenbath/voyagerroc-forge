@@ -35,9 +35,12 @@ With the demo server running, run:
 
 ```sh
 node scripts/runner-browser-smoke.cjs
+node scripts/runner-limits-browser-smoke.cjs
 ```
 
-It creates a labeled local task, advances it to approval, runs a scoped edit, checks actual evidence and persistence, and captures ignored QA screenshots. It does not mutate upstream code. Repeated runs create more labeled records. If using an already installed package, `PLAYWRIGHT_MODULE` can point to its module path. `FORGE_URL` selects a nondefault local server for this runner browser script.
+The first script creates a labeled local task, advances it to approval, runs a scoped edit, checks actual evidence and persistence, and captures ignored QA screenshots. It does not mutate upstream code. Repeated runs create more labeled records. If using an already installed package, `PLAYWRIGHT_MODULE` can point to its module path. `FORGE_URL` selects a nondefault local server for both runner browser scripts.
+
+The limits script creates or reuses a labeled demo task and opens the run dialog without starting a run. It checks the limit text and accessible description, keyboard opening, forward/backward tab navigation, Escape/Close and focus restoration at 1440px and 390px, with no page or dialog horizontal overflow. It captures `qa/scoped-edit-limits-1440.png` and `qa/scoped-edit-limits-390.png` using real demo metadata, then separately substitutes an API payload to verify that every displayed limit follows the metadata. The substituted payload is only a UI regression, not evidence of changed backend limits.
 
 `scripts/browser-smoke.cjs` imports public metadata and exercises the planning UI. `scripts/public-runner-smoke.mjs` additionally resolves/fetches a small real public GitHub source and creates a local-only patch. These two scripts require network access and are not in the offline CI suite.
 
@@ -46,6 +49,8 @@ It creates a labeled local task, advances it to approval, runs a scoped edit, ch
 Tests cover persistence, optimistic state transitions, webhook signature/replay/ordering, App signing/token caching, pinned Git snapshots, source preservation, actual diff hashes, failed static checks, nonexecution of repository code, path/UTF-8 restrictions, cancellation, descendants, deadlines, restart recovery and API boundaries.
 
 Snapshot case-collision regressions create committed paths through the Git index, allowing the same fixtures on case-sensitive and case-insensitive filesystems. They cover nested directory prefixes, file/directory overlaps in either order, existing full-file collisions, and valid mixed-case names. Rejected snapshots must leave the output root empty; both rejected and accepted snapshots must preserve the source HEAD, index, tracked changes and untracked fixture contents.
+
+Capability regressions check the advertised snapshot file-count and byte boundaries against real Git fixtures, accepting each boundary and rejecting a value just outside it. API checks verify edit counts and combined UTF-8 bytes, including multibyte text in both fields across multiple edits; rejected requests create no runs.
 
 Static syntax/JSON/whitespace checks are not project test execution. UI acceptance does not prove production isolation or external Scion compatibility.
 

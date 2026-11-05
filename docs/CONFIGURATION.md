@@ -38,6 +38,18 @@ The server intentionally validates loopback Host. Public webhook ingress, truste
 
 ## Runtime limits
 
-One active run per server process; no durable queue. Overall deadline 60 seconds; subprocess deadline 30 seconds; source API requests have a 15-second bound. Up to 200 tracked regular files, 1 MiB per file and 10 MiB snapshot content. Up to 20 edits, 256 KiB combined replacement text. Git fetch precedes tree-size inspection and is not protected by a disk quota.
+One active run per server process; no durable queue. Overall deadline 60 seconds; subprocess deadline 30 seconds; source API requests have a 15-second bound. Snapshots contain 1–200 tracked regular files, up to 1 MiB per file and 10 MiB total content. Runs accept 1–20 edits and up to 256 KiB of UTF-8 text across all `before` and `after` strings combined (`before: null` contributes zero bytes). These bounds are inclusive. Git fetch precedes tree-size inspection and is not protected by a disk quota.
+
+`GET /api/state` exposes these bounds in `runner.limits` before a run starts:
+
+| Capability field | Meaning | Current value |
+| --- | --- | --- |
+| `snapshot.minFiles`, `snapshot.maxFiles` | Tracked file count | 1, 200 |
+| `snapshot.maxFileBytes` | Bytes per source file | 1048576 (1 MiB) |
+| `snapshot.maxTotalBytes` | Total source content bytes | 10485760 (10 MiB) |
+| `edits.minCount`, `edits.maxCount` | File edit count | 1, 20 |
+| `edits.maxTextBytes` | Combined UTF-8 bytes in edit text | 262144 (256 KiB) |
+
+The snapshot and edit validators supply the same constants to `Runner.capabilities()`; these are existing enforcement limits, not new configuration options. The run dialog reads this metadata and `runner.timeoutMs` to explain limits before submission. It also identifies the static syntax/JSON/conflict/whitespace checks: project tests and AI generation remain disabled (`projectTests: false`, `aiAgent: false`).
 
 Use [SECURITY.md](../SECURITY.md) and the [runner notes](RUNNER-2026-10-28.md) before changing these boundaries.

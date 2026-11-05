@@ -102,6 +102,81 @@ test('unsafe paths, duplicate files and empty changes are rejected before creati
   assert.throws(() => validateEdits([edit, { ...edit, path: 'HELLO.mjs' }]), /Duplicate/);
   assert.throws(() => validateEdits([{ ...edit, after: edit.before }]));
 });
+test('API advertises enforced edit limits before a run, including combined UTF-8 bytes', async t => {
+  const { store, runner, task } = await fixture(t);
+  const server = createApp({ store, runner }); server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const state = await (await fetch(`${origin}/api/state`)).json();
+  assert.equal(state.runs.length, 0);
+  assert.equal(state.runner.projectTests, false);
+  assert.deepEqual(state.runner.limits, {
+    snapshot: { minFiles: 1, maxFiles: 200, maxFileBytes: 1048576, maxTotalBytes: 10485760 },
+    edits: { minCount: 1, maxCount: 20, maxTextBytes: 262144 }
+  });
+  const { minCount, maxCount, maxTextBytes } = state.runner.limits.edits;
+  const edits = Array.from({ length: maxCount }, (_, i) => ({ path: `file-${i}.txt`, before: null, after: 'a' }));
+  assert.deepEqual(validateEdits(edits.slice(0, minCount)), edits.slice(0, minCount));
+  assert.deepEqual(validateEdits(edits), edits);
+  // Two-byte text in both fields and two edits must share one byte budget.
+  const textEdits = [
+    { path: 'first.txt', before: 'é'.repeat(maxTextBytes / 8), after: 'ø'.repeat(maxTextBytes / 8) },
+    { path: 'second.txt', before: null, after: 'é'.repeat(maxTextBytes / 4) }
+  ];
+  assert.deepEqual(validateEdits(textEdits), textEdits);
+  const overText = textEdits.map(edit => ({ ...edit })); overText[1].after += 'a';
+  for (const [invalid, message] of [
+    [edits.slice(0, minCount - 1), /file edits/],
+    [[...edits, { path: 'extra.txt', before: null, after: 'a' }], /file edits/],
+    [overText, /Edits exceed/]
+  ]) {
+    const response = await fetch(`${origin}/api/tasks/${task.id}/runs`, { method: 'POST',
+      headers: { Origin: origin, 'Content-Type': 'application/json', 'X-Forge-Client': 'local-ui' },
+      body: JSON.stringify({ version: task.version, edits: invalid }) });
+    assert.equal(response.status, 400);
+    assert.match((await response.json()).error, message);
+  }
+  assert.equal(store.snapshot().runs.length, 0);
+  assert.equal(runner.jobs.size, 0);
+});
+
+async function commitSnapshot(source, contents) {
+  // Replace only this test fixture's index; repeated blobs keep large trees cheap.
+  await git(['read-tree','--empty'], { cwd: source });
+  const blobs = new Map(); const entries = [];
+  for (const [i, content] of contents.entries()) {
+    if (!blobs.has(content)) blobs.set(content, (await git(['hash-object','-w','--stdin'], { cwd: source, input: content })).toString().trim());
+    entries.push(`100644 ${blobs.get(content)}\tfile-${i}.txt\n`);
+  }
+  if (entries.length) await git(['update-index','--index-info'], { cwd: source, input: entries.join('') });
+  await git(['-c','user.name=Test','-c','user.email=test@localhost','commit','--quiet','--allow-empty','-m','Snapshot limit fixture'], { cwd: source });
+}
+
+for (const { name, contents, rejected, message } of [
+  { name: 'minimum file count', contents: limits => Array(limits.minFiles).fill('a'), rejected: files => files.slice(1), message: /tracked files/ },
+  { name: 'maximum file count', contents: limits => Array(limits.maxFiles).fill('a'), rejected: files => [...files, 'a'], message: /tracked files/ },
+  { name: 'per-file bytes', contents: limits => ['a'.repeat(limits.maxFileBytes)], rejected: files => [files[0] + 'a'], message: /Source file exceeds/ },
+  // Binary source blobs are allowed in snapshots and keep the source-state diff compact.
+  { name: 'total snapshot bytes', contents: limits => Array(limits.maxTotalBytes / limits.maxFileBytes).fill('\0'.repeat(limits.maxFileBytes)), rejected: files => [...files, 'a'], message: /Source snapshot exceeds/ }
+]) test(`snapshot enforces advertised ${name} at the boundary`, async t => {
+  const { runner, store, task, root, source } = await fixture(t);
+  const files = contents(runner.capabilities().limits.snapshot);
+  await commitSnapshot(source, files);
+  const before = await sourceState(source);
+  const acceptedRoot = join(root, 'accepted'); await mkdir(acceptedRoot);
+  const snapshot = await runner.snapshot(store.getProject(task.project_id), acceptedRoot, new AbortController().signal);
+  assert.equal(snapshot.sha, before.head.trim());
+  for (const [i, content] of files.entries()) assert.equal(await readFile(join(snapshot.workspace, `file-${i}.txt`), 'utf8'), content);
+  assert.deepEqual(await sourceState(source), before);
+
+  await commitSnapshot(source, rejected(files));
+  const beforeRejection = await sourceState(source);
+  const rejectedRoot = join(root, 'rejected'); await mkdir(rejectedRoot);
+  await assert.rejects(runner.snapshot(store.getProject(task.project_id), rejectedRoot, new AbortController().signal), message);
+  assert.deepEqual(await readdir(rejectedRoot), []);
+  assert.deepEqual(await sourceState(source), beforeRejection);
+});
+
 test('concurrency guard, cancellation and retry release the runner slot', async t => {
   const { runner, task } = await fixture(t);
   const run = runner.start(task.id, { version: task.version, edits: [edit] });
