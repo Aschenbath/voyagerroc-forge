@@ -1,0 +1,123 @@
+{
+  "checked_at": "2026-11-25T11:43:14.147Z",
+  "passed": true,
+  "node": "v24.22.0",
+  "browser": "156.0.8078.4",
+  "source_hashes": {
+    "public/app.js": "ad9389215f5ba327a378b2a1e85fb6e5ef3542a0dac6d150bc54f9c8c1665d4a",
+    "test/run-navigation.test.mjs": "d3913381b763fc5e4483d5fe8c69fd1a2c79d579e60b1b17ac4e689f75ef3178",
+    "docs/DEVELOPMENT.md": "4a69028719f605b25e9d92bcbbbb7278592bd89e2950a8c7b7aae2c81ffbd201"
+  },
+  "source_unchanged": true,
+  "harness_sha256": "10023a8830384127cd55186f30b3b7f0855e85f1cabd278eeb905eec452b30bb",
+  "baseline_sha": "28a1e16f2cab409faf64a3475189c5b972acd462",
+  "fixture_data": true,
+  "method": "Actual Forge HTTP application and in-memory SQLite store with synthetic task/run records. Server holds real run-detail requests to control arrival order. Before uses the exact upstream app.js; after uses current source. All navigation uses keyboard interaction. No real runner execution, external provider or project result is claimed.",
+  "results": [
+    {
+      "variant": "before",
+      "width": 1440,
+      "case": "task-selection",
+      "selectedTask": "first (obsolete)",
+      "keyboard": "Enter run link, Enter second task, Tab/Shift+Tab, release delayed HTTP response",
+      "noHorizontalOverflow": true
+    },
+    {
+      "variant": "before",
+      "width": 1440,
+      "case": "filter-and-task-roundtrip",
+      "focusPreserved": false
+    },
+    {
+      "variant": "before",
+      "width": 1440,
+      "case": "reverse-run-responses",
+      "latestFocusPreserved": false
+    },
+    {
+      "variant": "before",
+      "width": 1440,
+      "case": "dialog-keyboard-control",
+      "enterAndEscape": true
+    },
+    {
+      "variant": "before",
+      "width": 390,
+      "case": "task-selection",
+      "selectedTask": "first (obsolete)",
+      "keyboard": "Enter run link, Enter second task, Tab/Shift+Tab, release delayed HTTP response",
+      "noHorizontalOverflow": true
+    },
+    {
+      "variant": "before",
+      "width": 390,
+      "case": "filter-and-task-roundtrip",
+      "focusPreserved": false
+    },
+    {
+      "variant": "before",
+      "width": 390,
+      "case": "reverse-run-responses",
+      "latestFocusPreserved": false
+    },
+    {
+      "variant": "before",
+      "width": 390,
+      "case": "dialog-keyboard-control",
+      "enterAndEscape": true
+    },
+    {
+      "variant": "after",
+      "width": 1440,
+      "case": "task-selection",
+      "selectedTask": "second (current)",
+      "keyboard": "Enter run link, Enter second task, Tab/Shift+Tab, release delayed HTTP response",
+      "noHorizontalOverflow": true
+    },
+    {
+      "variant": "after",
+      "width": 1440,
+      "case": "filter-and-task-roundtrip",
+      "focusPreserved": true
+    },
+    {
+      "variant": "after",
+      "width": 1440,
+      "case": "reverse-run-responses",
+      "latestFocusPreserved": true
+    },
+    {
+      "variant": "after",
+      "width": 1440,
+      "case": "dialog-keyboard-control",
+      "enterAndEscape": true
+    },
+    {
+      "variant": "after",
+      "width": 390,
+      "case": "task-selection",
+      "selectedTask": "second (current)",
+      "keyboard": "Enter run link, Enter second task, Tab/Shift+Tab, release delayed HTTP response",
+      "noHorizontalOverflow": true
+    },
+    {
+      "variant": "after",
+      "width": 390,
+      "case": "filter-and-task-roundtrip",
+      "focusPreserved": true
+    },
+    {
+      "variant": "after",
+      "width": 390,
+      "case": "reverse-run-responses",
+      "latestFocusPreserved": true
+    },
+    {
+      "variant": "after",
+      "width": 390,
+      "case": "dialog-keyboard-control",
+      "enterAndEscape": true
+    }
+  ],
+  "errors": []
+}
